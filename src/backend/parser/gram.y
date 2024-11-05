@@ -13716,7 +13716,7 @@ joined_table:
 			| table_ref LSTMJOIN table_ref
 				{
 					JoinExpr   *n = makeNode(JoinExpr);
-					
+
 					n->jointype = JOIN_INNER;
 					n->isNatural = false;
 					n->larg = $1;
