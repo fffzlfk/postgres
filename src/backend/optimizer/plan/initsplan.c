@@ -1309,6 +1309,8 @@ deconstruct_distribute(PlannerInfo *root, JoinTreeItem *jtitem)
 			ojscope = NULL;
 		}
 
+		root->isLSTMJoin = j->isLSTMJoin;
+
 		/*
 		 * If it's a left join with a join clause that is strict for the LHS,
 		 * then we need to postpone handling of any non-degenerate join

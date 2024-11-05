@@ -275,6 +275,9 @@ add_paths_to_joinrel(PlannerInfo *root,
 	extra.param_source_rels = bms_add_members(extra.param_source_rels,
 											  joinrel->lateral_relids);
 
+	if (root->isLSTMJoin)
+		goto set_join_hook;
+
 	/*
 	 * 1. Consider mergejoin paths where both relations must be explicitly
 	 * sorted.  Skip this if we can't mergejoin.
@@ -332,7 +335,7 @@ add_paths_to_joinrel(PlannerInfo *root,
 		joinrel->fdwroutine->GetForeignJoinPaths(root, joinrel,
 												 outerrel, innerrel,
 												 jointype, &extra);
-
+set_join_hook:
 	/*
 	 * 6. Finally, give extensions a chance to manipulate the path list.  They
 	 * could add new paths (such as CustomPaths) by calling add_path(), or

@@ -43,3 +43,9 @@ lib*.pc
 /Release/
 /tmp_install/
 /portlock/
+.cache
+data
+install
+logfile
+compile_commands.json
+.vscode
