@@ -12,6 +12,7 @@
  *
  *-------------------------------------------------------------------------
  */
+#include "catalog/pg_type_d.h"
 #include "postgres.h"
 
 #include <ctype.h>
@@ -3715,6 +3716,11 @@ deconstruct_array_builtin(ArrayType *array,
 			elmbyval = false;
 			elmalign = TYPALIGN_CHAR;
 			break;
+
+		case FLOAT4OID:
+			elmlen = sizeof(float4);
+			elmbyval = true;
+			elmalign = TYPALIGN_INT;
 
 		case FLOAT8OID:
 			elmlen = sizeof(float8);

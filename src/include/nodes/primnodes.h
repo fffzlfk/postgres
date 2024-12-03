@@ -2291,6 +2291,8 @@ typedef struct JoinExpr
 	Alias	   *alias pg_node_attr(query_jumble_ignore);
 	/* RT index assigned for join, or 0 */
 	int			rtindex;
+
+	bool       isLSTMJoin;
 } JoinExpr;
 
 /*----------

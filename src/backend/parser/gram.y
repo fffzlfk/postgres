@@ -735,6 +735,7 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 	LABEL LANGUAGE LARGE_P LAST_P LATERAL_P
 	LEADING LEAKPROOF LEAST LEFT LEVEL LIKE LIMIT LISTEN LOAD LOCAL
 	LOCALTIME LOCALTIMESTAMP LOCATION LOCK_P LOCKED LOGGED
+	LSTMJOIN
 
 	MAPPING MATCH MATCHED MATERIALIZED MAXVALUE MERGE MERGE_ACTION METHOD
 	MINUTE_P MINVALUE MODE MONTH_P MOVE
@@ -893,7 +894,7 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
  * They wouldn't be given a precedence at all, were it not that we need
  * left-associativity among the JOIN rules themselves.
  */
-%left		JOIN CROSS LEFT FULL RIGHT INNER_P NATURAL
+%left		LSTMJOIN JOIN CROSS LEFT FULL RIGHT INNER_P NATURAL
 
 %%
 
@@ -13652,6 +13653,7 @@ joined_table:
 					n->usingClause = NIL;
 					n->join_using_alias = NULL;
 					n->quals = NULL;
+					n->isLSTMJoin = false;
 					$$ = n;
 				}
 			| table_ref join_type JOIN table_ref join_qual
@@ -13662,6 +13664,7 @@ joined_table:
 					n->isNatural = false;
 					n->larg = $1;
 					n->rarg = $4;
+					n->isLSTMJoin = false;
 					if ($5 != NULL && IsA($5, List))
 					{
 						 /* USING clause */
@@ -13684,6 +13687,7 @@ joined_table:
 					n->isNatural = false;
 					n->larg = $1;
 					n->rarg = $3;
+					n->isLSTMJoin = false;
 					if ($4 != NULL && IsA($4, List))
 					{
 						/* USING clause */
@@ -13708,6 +13712,7 @@ joined_table:
 					n->usingClause = NIL; /* figure out which columns later... */
 					n->join_using_alias = NULL;
 					n->quals = NULL; /* fill later */
+					n->isLSTMJoin = false;
 					$$ = n;
 				}
 			| table_ref NATURAL JOIN table_ref
@@ -13722,6 +13727,21 @@ joined_table:
 					n->usingClause = NIL; /* figure out which columns later... */
 					n->join_using_alias = NULL;
 					n->quals = NULL; /* fill later */
+					n->isLSTMJoin = false;
+					$$ = n;
+				}
+			| table_ref LSTMJOIN table_ref
+				{
+					JoinExpr   *n = makeNode(JoinExpr);
+
+					n->jointype = JOIN_INNER;
+					n->isNatural = false;
+					n->larg = $1;
+					n->rarg = $3;
+					n->usingClause = NIL;
+					n->join_using_alias = NULL;
+					n->quals = NULL;
+					n->isLSTMJoin = true;
 					$$ = n;
 				}
 		;
@@ -18101,6 +18121,7 @@ reserved_keyword:
 			| LIMIT
 			| LOCALTIME
 			| LOCALTIMESTAMP
+			| LSTMJOIN
 			| NOT
 			| NULL_P
 			| OFFSET
@@ -18367,6 +18388,7 @@ bare_label_keyword:
 			| LOCK_P
 			| LOCKED
 			| LOGGED
+			| LSTMJOIN
 			| MAPPING
 			| MATCH
 			| MATCHED

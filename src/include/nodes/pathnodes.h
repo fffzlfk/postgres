@@ -559,6 +559,9 @@ struct PlannerInfo
 
 	/* Does this query modify any partition key columns? */
 	bool		partColsUpdated;
+
+	/* Is this query a LSTMJOIN? */
+	bool        isLSTMJoin;
 };
 
 
