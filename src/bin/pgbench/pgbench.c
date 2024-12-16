@@ -3880,8 +3880,14 @@ advanceConnectionState(TState *thread, CState *st, StatsData *agg)
 						switch (conditional_stack_peek(st->cstack))
 						{
 							case IFSTATE_FALSE:
-								if (command->meta == META_IF ||
-									command->meta == META_ELIF)
+								if (command->meta == META_IF)
+								{
+									/* nested if in skipped branch - ignore */
+									conditional_stack_push(st->cstack,
+														   IFSTATE_IGNORED);
+									st->command++;
+								}
+								else if (command->meta == META_ELIF)
 								{
 									/* we must evaluate the condition */
 									st->state = CSTATE_START_COMMAND;
@@ -3900,11 +3906,7 @@ advanceConnectionState(TState *thread, CState *st, StatsData *agg)
 									conditional_stack_pop(st->cstack);
 									if (conditional_active(st->cstack))
 										st->state = CSTATE_START_COMMAND;
-
-									/*
-									 * else state remains in
-									 * CSTATE_SKIP_COMMAND
-									 */
+									/* else state remains CSTATE_SKIP_COMMAND */
 									st->command++;
 								}
 								break;
@@ -6568,13 +6570,13 @@ printResults(StatsData *total,
 					SimpleStats *cstats = &(*commands)->stats;
 
 					if (max_tries == 1)
-						printf("   %11.3f  %10" INT64_MODIFIER "d  %s\n",
+						printf("   %11.3f  %10" PRId64 " %s\n",
 							   (cstats->count > 0) ?
 							   1000.0 * cstats->sum / cstats->count : 0.0,
 							   (*commands)->failures,
 							   (*commands)->first_line);
 					else
-						printf("   %11.3f  %10" INT64_MODIFIER "d  %10" INT64_MODIFIER "d  %s\n",
+						printf("   %11.3f  %10" PRId64 " %10" PRId64 " %s\n",
 							   (cstats->count > 0) ?
 							   1000.0 * cstats->sum / cstats->count : 0.0,
 							   (*commands)->failures,
