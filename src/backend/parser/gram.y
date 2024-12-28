@@ -283,6 +283,7 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 		CreateOpFamilyStmt AlterOpFamilyStmt CreatePLangStmt
 		CreateSchemaStmt CreateSeqStmt CreateStmt CreateStatsStmt CreateTableSpaceStmt
 		CreateFdwStmt CreateForeignServerStmt CreateForeignTableStmt
+		CreateModelStmt
 		CreateAssertionStmt CreateTransformStmt CreateTrigStmt CreateEventTrigStmt
 		CreateUserStmt CreateUserMappingStmt CreateRoleStmt CreatePolicyStmt
 		CreatedbStmt DeclareCursorStmt DefineStmt DeleteStmt DiscardStmt DoStmt
@@ -330,9 +331,11 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 %type <list>	createdb_opt_list createdb_opt_items copy_opt_list
 				transaction_mode_list
 				create_extension_opt_list alter_extension_opt_list
+				create_model_opt_list
 %type <defelt>	createdb_opt_item copy_opt_item
 				transaction_mode_item
 				create_extension_opt_item alter_extension_opt_item
+				create_model_opt_item
 
 %type <ival>	opt_lock lock_type cast_context
 %type <str>		utility_option_name
@@ -413,6 +416,7 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 				OptTypedTableElementList TypedTableElementList
 				reloptions opt_reloptions
 				OptWith opt_definition func_args func_args_list
+				with_model_opt
 				func_args_with_defaults func_args_with_defaults_list
 				aggr_args aggr_args_list
 				func_as createfunc_opt_list opt_createfunc_opt_list alterfunc_opt_list
@@ -737,7 +741,7 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 	LOCALTIME LOCALTIMESTAMP LOCATION LOCK_P LOCKED LOGGED
 
 	MAPPING MATCH MATCHED MATERIALIZED MAXVALUE MERGE MERGE_ACTION METHOD
-	MINUTE_P MINVALUE MODE MONTH_P MOVE
+	MINUTE_P MINVALUE MODE MODEL MONTH_P MOVE
 
 	NAME_P NAMES NATIONAL NATURAL NCHAR NESTED NEW NEXT NFC NFD NFKC NFKD NO
 	NONE NORMALIZE NORMALIZED
@@ -1050,6 +1054,7 @@ stmt:
 			| CreateTransformStmt
 			| CreateTrigStmt
 			| CreateEventTrigStmt
+			| CreateModelStmt
 			| CreateRoleStmt
 			| CreateUserStmt
 			| CreateUserMappingStmt
@@ -3697,6 +3702,41 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 					n->tablespacename = $17;
 					n->if_not_exists = true;
 					$$ = (Node *) n;
+				}
+		;
+
+CreateModelStmt:
+    		CREATE MODEL name USING name WITH with_model_opt FROM SelectStmt
+    		{
+    		    CreateModelStmt *n = makeNode(CreateModelStmt);
+
+    		    n->modelname = $3;
+    		    n->modeltype = $5;
+    		    n->modeloptions = $7;
+    		    n->selectquery = $9;
+				$$ = (Node*) n;
+    		}
+    	;
+with_model_opt:
+			  '(' create_model_opt_list ')'
+			  { $$ = $2; }
+			  |
+			  { $$ = NIL; }
+		;
+
+create_model_opt_list:
+			  create_model_opt_item
+				{ $$ = list_make1($1); }
+			| create_model_opt_list ',' create_model_opt_item
+				{ $$ = lappend($1, $3); }
+			| /* EMPTY */
+				{ $$ = NIL; }
+		;
+
+create_model_opt_item:
+			 name '=' NumericOnly
+				{
+					$$ = makeDefElem($1, (Node*) $3, @1);
 				}
 		;
 
@@ -18101,6 +18141,7 @@ reserved_keyword:
 			| LIMIT
 			| LOCALTIME
 			| LOCALTIMESTAMP
+			| MODEL
 			| NOT
 			| NULL_P
 			| OFFSET
@@ -18377,6 +18418,7 @@ bare_label_keyword:
 			| METHOD
 			| MINVALUE
 			| MODE
+			| MODEL
 			| MOVE
 			| NAME_P
 			| NAMES

@@ -28,6 +28,7 @@ OBJS = \
 	copyfromparse.o \
 	copyto.o \
 	createas.o \
+	createmodel.o \
 	dbcommands.o \
 	define.o \
 	discard.o \

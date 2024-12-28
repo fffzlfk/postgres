@@ -243,6 +243,7 @@ typedef struct Query
 } Query;
 
 
+
 /****************************************************************************
  *	Supporting data structures for Parse Trees
  *
@@ -2172,6 +2173,21 @@ typedef struct SelectStmt
 	/* Eventually add fields for CORRESPONDING spec here */
 } SelectStmt;
 
+typedef struct CreateModelStmt
+{
+    NodeTag     type;         /* T_CreateModelStmt */
+    char       *modelname;    /* 模型名称 */
+    char       *modeltype;    /* 模型类型，例如 'lstm' */
+    List       *modeloptions; /* 模型选项列表 */
+    Node 	   *selectquery;        /* 训练查询 */
+} CreateModelStmt;
+
+typedef struct CreateModelOption
+{
+    NodeTag type;
+    char *option_name;
+    int  option_value;
+} CreateModelOption;
 
 /* ----------------------
  *		Set Operation node for post-analysis query trees

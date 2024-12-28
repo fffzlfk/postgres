@@ -192,6 +192,7 @@ ClassifyUtilityCommandAsReadOnly(Node *parsetree)
 		case T_CreateTrigStmt:
 		case T_CreateUserMappingStmt:
 		case T_CreatedbStmt:
+		case T_CreateModelStmt:
 		case T_DefineStmt:
 		case T_DropOwnedStmt:
 		case T_DropRoleStmt:
@@ -1062,6 +1063,13 @@ standard_ProcessUtility(PlannedStmt *pstmt,
 									   dest, qc);
 				else
 					ExecSecLabelStmt(stmt);
+				break;
+			}
+
+		case T_CreateModelStmt:
+			{
+				CreateModelStmt *stmt = (CreateModelStmt *) parsetree;
+				ExecCreateModel(pstate, stmt, params, queryEnv, qc);
 				break;
 			}
 
@@ -2888,6 +2896,10 @@ CreateCommandTag(Node *parsetree)
 				default:
 					tag = CMDTAG_UNKNOWN;
 			}
+			break;
+		
+		case T_CreateModelStmt:
+			tag = CMDTAG_CREATE_MODEL;
 			break;
 
 		case T_RefreshMatViewStmt:

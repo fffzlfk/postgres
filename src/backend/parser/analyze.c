@@ -85,6 +85,7 @@ static Query *transformCallStmt(ParseState *pstate,
 								CallStmt *stmt);
 static void transformLockingClause(ParseState *pstate, Query *qry,
 								   LockingClause *lc, bool pushedDown);
+static Query *transformCreateModelStmt(ParseState *pstate, CreateModelStmt *stmt);
 #ifdef DEBUG_NODE_TESTS_ENABLED
 static bool test_raw_expression_coverage(Node *node, void *context);
 #endif
@@ -491,6 +492,10 @@ transformStmt(ParseState *pstate, Node *parseTree)
 		case T_CallStmt:
 			result = transformCallStmt(pstate,
 									   (CallStmt *) parseTree);
+			break;
+
+		case T_CreateModelStmt:
+			result = transformCreateModelStmt(pstate, (CreateModelStmt*) parseTree);
 			break;
 
 		default:
@@ -3170,6 +3175,28 @@ transformCreateTableAsStmt(ParseState *pstate, CreateTableAsStmt *stmt)
 	result->commandType = CMD_UTILITY;
 	result->utilityStmt = (Node *) stmt;
 
+	return result;
+}
+
+static Query*
+transformCreateModelStmt(ParseState *pstate, CreateModelStmt *stmt)
+{
+	Query *result;
+	Query *query;
+	ListCell *lc;
+
+	query = transformStmt(pstate, stmt->selectquery);
+	stmt->selectquery = (Node*) query;
+
+	result = makeNode(Query);
+	result->commandType = CMD_UTILITY;
+	result->utilityStmt = (Node*) stmt;
+
+	foreach(lc, stmt->modeloptions)
+	{
+		DefElem *defel = lfirst(lc);
+		elog(INFO, "%s %d", defel->defname, intVal(defel->arg));
+	}
 	return result;
 }
 

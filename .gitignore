@@ -43,3 +43,11 @@ lib*.pc
 /Release/
 /tmp_install/
 /portlock/
+install
+compile_commands.json
+.cache
+data
+.clangd
+.clang-format
+.gdb_history
+logfile
