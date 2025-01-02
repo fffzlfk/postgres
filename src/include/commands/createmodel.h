@@ -6,7 +6,6 @@
 #include "parser/parse_node.h"
 #include "tcop/cmdtag.h"
 
-extern void ExecCreateModel(ParseState *pstate, CreateModelStmt *stmt,
-				  ParamListInfo params, QueryEnvironment *queryEnv,
-				  QueryCompletion *qc);
-#endif
+extern void ExecCreateModel(ParseState *pstate, CreateModelStmt * stmt,
+							ParamListInfo params, QueryEnvironment *queryEnv,
+							QueryCompletion *qc);

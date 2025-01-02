@@ -332,6 +332,7 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 				transaction_mode_list
 				create_extension_opt_list alter_extension_opt_list
 				create_model_opt_list
+
 %type <defelt>	createdb_opt_item copy_opt_item
 				transaction_mode_item
 				create_extension_opt_item alter_extension_opt_item
@@ -3705,39 +3706,53 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 				}
 		;
 
-CreateModelStmt:
-    		CREATE MODEL name USING name WITH with_model_opt FROM SelectStmt
-    		{
-    		    CreateModelStmt *n = makeNode(CreateModelStmt);
+CreateModelStmt:	CREATE MODEL name USING name WITH with_model_opt INPUT_P '(' opt_target_list ')' LABEL '(' opt_target_list ')' FROM SelectStmt
+					{
+						CreateModelStmt *n = makeNode(CreateModelStmt);
 
-    		    n->modelname = $3;
-    		    n->modeltype = $5;
-    		    n->modeloptions = $7;
-    		    n->selectquery = $9;
-				$$ = (Node*) n;
-    		}
-    	;
-with_model_opt:
-			  '(' create_model_opt_list ')'
-			  { $$ = $2; }
-			  |
-			  { $$ = NIL; }
-		;
+						n->modelname = $3;
+						n->modeltype = $5;
+						n->modeloptions = $7;
+						n->inputcolumns = $10;
+						n->labelcolumns = $14;
+						n->selectquery = $17;
+						$$ = (Node*) n;
+					}
+				;
 
-create_model_opt_list:
-			  create_model_opt_item
-				{ $$ = list_make1($1); }
-			| create_model_opt_list ',' create_model_opt_item
-				{ $$ = lappend($1, $3); }
-			| /* EMPTY */
-				{ $$ = NIL; }
-		;
+with_model_opt:	'(' create_model_opt_list ')'
+					{ 
+						$$ = $2;
+					}
+				|
+					{ 
+						$$ = NIL;
+					}
+				;
 
-create_model_opt_item:
-			 name '=' NumericOnly
-				{
-					$$ = makeDefElem($1, (Node*) $3, @1);
-				}
+create_model_opt_list:	create_model_opt_item
+							{ 
+								$$ = list_make1($1);
+							}
+						| create_model_opt_list ',' create_model_opt_item
+							{ 
+								$$ = lappend($1, $3); 
+							}
+						| /* EMPTY */
+							{ 
+								$$ = NIL; 
+							}
+						;
+
+create_model_opt_item:	name '=' NumericOnly
+							{
+								$$ = makeDefElem($1, (Node*) $3, @1);
+							}
+						| name '=' name
+							{
+								$$ = makeDefElem($1, (Node*) makeString($3), @1);
+							}
+			
 		;
 
 /*
@@ -17111,7 +17126,7 @@ json_key_uniqueness_constraint_opt:
 			| WITH UNIQUE				%prec UNBOUNDED	{ $$ = true; }
 			| WITHOUT UNIQUE KEYS						{ $$ = false; }
 			| WITHOUT UNIQUE			%prec UNBOUNDED	{ $$ = false; }
-			| /* EMPTY */ 				%prec UNBOUNDED	{ $$ = false; }
+			| /* EMPTY */				%prec UNBOUNDED	{ $$ = false; }
 		;
 
 json_name_and_value_list:

@@ -25,6 +25,7 @@
 #include "common/relpath.h"
 #include "nodes/bitmapset.h"
 #include "nodes/lockoptions.h"
+#include "nodes/pg_list.h"
 #include "nodes/primnodes.h"
 #include "nodes/value.h"
 #include "partitioning/partdefs.h"
@@ -2175,19 +2176,21 @@ typedef struct SelectStmt
 
 typedef struct CreateModelStmt
 {
-    NodeTag     type;         /* T_CreateModelStmt */
-    char       *modelname;    /* 模型名称 */
-    char       *modeltype;    /* 模型类型，例如 'lstm' */
-    List       *modeloptions; /* 模型选项列表 */
-    Node 	   *selectquery;        /* 训练查询 */
-} CreateModelStmt;
+	NodeTag		type;			/* T_CreateModelStmt */
+	char	   *modelname;		/* 模型名称 */
+	char	   *modeltype;		/* 模型类型，例如 'lstm' */
+	List	   *modeloptions;	/* 模型选项列表 */
+	List	   *inputcolumns;	/* 输入列列表 */
+	List	   *labelcolumns;	/* 标签列列表 */
+	Node	   *selectquery;	/* 训练查询 */
+}			CreateModelStmt;
 
 typedef struct CreateModelOption
 {
-    NodeTag type;
-    char *option_name;
-    int  option_value;
-} CreateModelOption;
+	NodeTag		type;
+	char	   *option_name;
+	int			option_value;
+}			CreateModelOption;
 
 /* ----------------------
  *		Set Operation node for post-analysis query trees

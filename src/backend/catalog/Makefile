@@ -36,6 +36,7 @@ OBJS = \
 	pg_enum.o \
 	pg_inherits.o \
 	pg_largeobject.o \
+	pg_model.o \
 	pg_namespace.o \
 	pg_operator.o \
 	pg_parameter_acl.o \

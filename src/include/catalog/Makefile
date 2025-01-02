@@ -35,6 +35,7 @@ CATALOG_HEADERS := \
 	pg_language.h \
 	pg_largeobject_metadata.h \
 	pg_largeobject.h \
+	pg_model.h \
 	pg_aggregate.h \
 	pg_statistic.h \
 	pg_statistic_ext.h \

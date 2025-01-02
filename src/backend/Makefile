@@ -63,8 +63,11 @@ all: submake-libpgport submake-catalog-headers submake-utils-headers postgres $(
 ifneq ($(PORTNAME), cygwin)
 ifneq ($(PORTNAME), win32)
 
+LIBTORCH_PATH = /home/fffzlfk/dev/train/libtorch
+PG_LDFLAGS += -lstdc++ -L$(LIBTORCH_PATH)/lib -ltorch -ltorch_cpu -lc10 -Wl,-rpath,$(LIBTORCH_PATH)/lib
+
 postgres: $(OBJS)
-	$(CC) $(CFLAGS) $(call expand_subsys,$^) $(LDFLAGS) $(LIBS) -o $@
+	$(CC) $(CFLAGS) $(call expand_subsys,$^) $(PG_LDFLAGS) $(LDFLAGS) $(LIBS) -o $@
 
 endif
 endif

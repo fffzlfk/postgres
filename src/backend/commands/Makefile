@@ -38,6 +38,7 @@ OBJS = \
 	extension.o \
 	foreigncmds.o \
 	functioncmds.o \
+	hashmap.o \
 	indexcmds.o \
 	lockcmds.o \
 	matview.o \
@@ -48,6 +49,7 @@ OBJS = \
 	prepare.o \
 	proclang.o \
 	publicationcmds.o \
+	ptensor.o \
 	schemacmds.o \
 	seclabel.o \
 	sequence.o \
@@ -56,6 +58,7 @@ OBJS = \
 	tablecmds.o \
 	tablespace.o \
 	trigger.o \
+	train.o \
 	tsearchcmds.o \
 	typecmds.o \
 	user.o \
@@ -63,5 +66,15 @@ OBJS = \
 	vacuumparallel.o \
 	variable.o \
 	view.o
+
+CXX = g++
+LIBTORCH_PATH = /home/fffzlfk/dev/train/libtorch
+INCLUDE_DIRS = -I$(top_srcdir)/src/include -I$(LIBTORCH_PATH)/include -I$(LIBTORCH_PATH)/include/torch/csrc/api/include
+PG_CXXFLAGS += -std=c++17 -g -O0 -fPIC -D_GLIBCXX_USE_CXX11_ABI=0
+
+train.o: train.cpp
+	$(CXX) $(INCLUDE_DIRS) $(PG_CXXFLAGS)  -c -o $@ $<
+
+LIBS += PG_LDFLAGS
 
 include $(top_srcdir)/src/backend/common.mk

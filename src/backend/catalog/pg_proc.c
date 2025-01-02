@@ -12,6 +12,7 @@
  *
  *-------------------------------------------------------------------------
  */
+#include "catalog/pg_model_d.h"
 #include "postgres.h"
 
 #include "access/htup_details.h"
