@@ -292,7 +292,7 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 		DropdbStmt DropTableSpaceStmt
 		DropTransformStmt
 		DropUserMappingStmt ExplainStmt FetchStmt
-		GrantStmt GrantRoleStmt ImportForeignSchemaStmt IndexStmt InsertStmt
+		GrantStmt GrantRoleStmt ImportForeignSchemaStmt IndexStmt InsertStmt InferredByStmt
 		ListenStmt LoadStmt LockStmt MergeStmt NotifyStmt ExplainableStmt PreparableStmt
 		CreateFunctionStmt AlterFunctionStmt ReindexStmt RemoveAggrStmt
 		RemoveFuncStmt RemoveOperStmt RenameStmt ReturnStmt RevokeStmt RevokeRoleStmt
@@ -728,7 +728,7 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 	HANDLER HAVING HEADER_P HOLD HOUR_P
 
 	IDENTITY_P IF_P ILIKE IMMEDIATE IMMUTABLE IMPLICIT_P IMPORT_P IN_P INCLUDE
-	INCLUDING INCREMENT INDENT INDEX INDEXES INHERIT INHERITS INITIALLY INLINE_P
+	INCLUDING INCREMENT INDENT INDEX INDEXES INFERRED INHERIT INHERITS INITIALLY INLINE_P
 	INNER_P INOUT INPUT_P INSENSITIVE INSERT INSTEAD INT_P INTEGER
 	INTERSECT INTERVAL INTO INVOKER IS ISNULL ISOLATION
 
@@ -1084,6 +1084,7 @@ stmt:
 			| GrantRoleStmt
 			| ImportForeignSchemaStmt
 			| IndexStmt
+			| InferredByStmt
 			| InsertStmt
 			| ListenStmt
 			| RefreshMatViewStmt
@@ -3705,6 +3706,19 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 					$$ = (Node *) n;
 				}
 		;
+
+InferredByStmt:	INFERRED BY name FROM SelectStmt
+			    {
+					InferredByStmt *n = makeNode(InferredByStmt);
+
+					n->modelname = $3;
+					n->selectquery = $5;
+
+					elog(INFO, "hello");
+
+					$$ = (Node*) n;
+				}
+			;
 
 CreateModelStmt:	CREATE MODEL name USING name WITH with_model_opt INPUT_P '(' opt_target_list ')' LABEL '(' opt_target_list ')' FROM SelectStmt
 					{
@@ -17785,6 +17799,7 @@ unreserved_keyword:
 			| INDENT
 			| INDEX
 			| INDEXES
+			| INFERRED
 			| INHERIT
 			| INHERITS
 			| INLINE_P
@@ -18372,6 +18387,7 @@ bare_label_keyword:
 			| INDENT
 			| INDEX
 			| INDEXES
+			| INFERRED
 			| INHERIT
 			| INHERITS
 			| INITIALLY

@@ -23,6 +23,7 @@
 #include "catalog/pg_model.h"
 #include "commands/train.h"
 #include "commands/ptensor.h"
+#include "commands/modelutils.h"
 #include "tcop/pquery.h"
 
 typedef struct
@@ -271,29 +272,16 @@ ExecCreateModel(ParseState *pstate, CreateModelStmt * stmt, ParamListInfo params
 				QueryEnvironment *queryEnv, QueryCompletion *qc)
 {
 	Query	   *query = castNode(Query, stmt->selectquery);
-	List	   *rewritten;
 	DestReceiver *dest;
 	PlannedStmt *plan;
-	Tuplestorestate *tstore;
+	Tuplestorestate *tup_store_state;
 	TupleTableSlot *slot;
 	CreateModelState *cmstate;
 	Portal		portal;
 
-	Assert(query->commandType == CMD_SELECT);
-
+	plan = plan_from_query(query, pstate, params);
 	portal = CreateNewPortal();
 	portal->visible = false;
-
-	rewritten = QueryRewrite(query);
-
-	if (list_length(rewritten) != 1)
-		elog(ERROR, "unexpected rewrite result for CREATE MODEL FROM SELECT");
-
-	query = linitial_node(Query, rewritten);
-
-	Assert(query->commandType == CMD_SELECT);
-
-	plan = pg_plan_query(query, pstate->p_sourcetext, CURSOR_OPT_PARALLEL_OK, params);
 
 	/*
 	 * Use a snapshot with an updated command ID to ensure this query sees
@@ -311,9 +299,14 @@ ExecCreateModel(ParseState *pstate, CreateModelStmt * stmt, ParamListInfo params
 
 	dest = CreateDestReceiver(DestTuplestore);
 
-	tstore = tuplestore_begin_heap(false, true, work_mem);
-	tuplestore_set_eflags(tstore, EXEC_FLAG_REWIND | EXEC_FLAG_BACKWARD);
-	SetTuplestoreDestReceiverParams(dest, tstore, portal->portalContext, false, NULL, NULL);
+	tup_store_state = tuplestore_begin_heap(false, true, work_mem);
+	tuplestore_set_eflags(tup_store_state, EXEC_FLAG_REWIND | EXEC_FLAG_BACKWARD);
+	SetTuplestoreDestReceiverParams(dest,
+									tup_store_state,
+									portal->portalContext,
+									false,
+									portal->queryDesc->tupDesc,
+									NULL);
 
 	cmstate = InitCreateModel(stmt, portal->queryDesc->tupDesc);
 
@@ -321,79 +314,97 @@ ExecCreateModel(ParseState *pstate, CreateModelStmt * stmt, ParamListInfo params
 
 	slot = MakeSingleTupleTableSlot(portal->queryDesc->tupDesc, &TTSOpsMinimalTuple);
 
+	int			tuple_count = tuplestore_tuple_count(tup_store_state);
 	int			batch_size = cmstate->params->batch_size;
 	int			input_size = cmstate->params->input_size;
 	int			output_size = cmstate->params->label_size;
+	int			num_batch = tuple_count / batch_size;
+
+	elog(INFO, "count: %d", tuple_count);
+
+	int			input_dims[2] = {batch_size, input_size};
+	int			label_dims[2] = {batch_size, output_size};
+
+	MemoryContext data_cxt =
+		AllocSetContextCreate(CurrentMemoryContext, "data context", ALLOCSET_DEFAULT_SIZES);
+
+	MemoryContext old_cxt = MemoryContextSwitchTo(data_cxt);
+
+	PTensor		inputs = AllocPTensor(input_dims, 2);
+	PTensor		labels = AllocPTensor(label_dims, 2);
+
+	MemoryContextSwitchTo(old_cxt);
 
 	for (int i = 0; i < cmstate->epochs; i++)
 	{
-		tuplestore_rescan(tstore);
+		tuplestore_rescan(tup_store_state);
 
-		int			input_dims[2] = {batch_size, input_size};
-		int			label_dims[2] = {batch_size, output_size};
+		ExecClearTuple(slot);
 
-		MemoryContext epochcxt =
-			AllocSetContextCreate(CurrentMemoryContext, "epoch context", ALLOCSET_DEFAULT_SIZES);
-		MemoryContext oldepochcxt = MemoryContextSwitchTo(epochcxt);
-
-		PTensor		inputs = AllocPTensor(input_dims, 2);
-		PTensor		labels = AllocPTensor(label_dims, 2);
-
-		for (int j = 0; j < batch_size; j++)
+		for (int batch_idx = 0; batch_idx < num_batch; batch_idx++)
 		{
-			Datum		datum;
-			bool		isnull;
-			bool		has = tuplestore_gettupleslot(tstore, true, false, slot);
-
-			if (!has)
-				break;
-
-			for (int k = 0; k < input_size; k++)
+			for (int j = 0; j < batch_size; j++)
 			{
-				datum = slot_getattr(slot, cmstate->input_cols[k], &isnull);
-				if (isnull)
-					elog(ERROR, "null input");
-				inputs.data[j * input_size + k] = DatumGetFloat4(datum);
-			}
+				bool		has;
+				Datum		datum;
+				bool		isnull;
 
-			for (int k = 0; k < output_size; k++)
-			{
-				datum = slot_getattr(slot, cmstate->label_cols[k], &isnull);
-				if (isnull)
-					elog(ERROR, "null output");
-				labels.data[j * output_size + k] = DatumGetFloat4(datum);
+				has = tuplestore_gettupleslot(tup_store_state, true, false, slot);
+				if (!has)
+					break;
+
+				for (int k = 0; k < input_size; k++)
+				{
+					datum = slot_getattr(slot, cmstate->input_cols[k], &isnull);
+					if (isnull)
+						elog(ERROR, "null input");
+					inputs.data[j * input_size + k] = DatumGetFloat4(datum);
+				}
+
+				for (int k = 0; k < output_size; k++)
+				{
+					datum = slot_getattr(slot, cmstate->label_cols[k], &isnull);
+					if (isnull)
+						elog(ERROR, "null output");
+					labels.data[j * output_size + k] = DatumGetFloat4(datum);
+				}
+
+				elog(INFO, "%f, %f", inputs.data[j], labels.data[j]);
 			}
+			ExecClearTuple(slot);
+
+			float		loss = train_model(cmstate->handle, inputs.data, labels.data, batch_size);
+
+			elog(INFO, "epoch %d, loss: %f", i, loss);
 		}
-
-		float		loss = train_model(cmstate->handle, inputs.data, labels.data, batch_size);
-
-		elog(INFO, "epoch %d, loss: %f", i, loss);
-
-		MemoryContextSwitchTo(oldepochcxt);
-		MemoryContextDelete(epochcxt);
 	}
 
-	char	   *model_bin_buf;
-	int			model_bin_size;
+	MemoryContextDelete(data_cxt);
 
-	save_model_bin(cmstate->handle, &model_bin_buf, &model_bin_size);
-	elog(INFO, "model bin size: %d", model_bin_size);
+	{
+		char	   *model_bin_buf;
+		int			model_bin_size;
+		bytea	   *model_bin;
 
-	bytea	   *model_bin = (bytea *) palloc(VARHDRSZ + model_bin_size);
+		save_model_bin(cmstate->handle, &model_bin_buf, &model_bin_size);
+		elog(INFO, "model bin size: %d", model_bin_size);
 
-	SET_VARSIZE(model_bin, VARHDRSZ + model_bin_size);
-	memcpy(VARDATA(model_bin), model_bin_buf, model_bin_size);
+		model_bin = (bytea *) palloc(VARHDRSZ + model_bin_size);
 
-	SaveModelToCatalog(stmt->modelname, stmt->modeltype, model_bin);
+		SET_VARSIZE(model_bin, VARHDRSZ + model_bin_size);
+		memcpy(VARDATA(model_bin), model_bin_buf, model_bin_size);
 
-	free(model_bin_buf);
-	pfree(model_bin);
+		SaveModelToCatalog(stmt->modelname, stmt->modeltype, model_bin);
+
+		free(model_bin_buf);
+		pfree(model_bin);
+	}
 
 	EndCreateModel(cmstate);
 
 	ExecDropSingleTupleTableSlot(slot);
 
-	tuplestore_end(tstore);
+	tuplestore_end(tup_store_state);
 
 	dest->rDestroy(dest);
 

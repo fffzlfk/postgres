@@ -40,8 +40,10 @@ OBJS = \
 	functioncmds.o \
 	hashmap.o \
 	indexcmds.o \
+	inferredby.o \
 	lockcmds.o \
 	matview.o \
+	modelutils.o \
 	opclasscmds.o \
 	operatorcmds.o \
 	policy.o \

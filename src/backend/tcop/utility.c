@@ -14,6 +14,8 @@
  *
  *-------------------------------------------------------------------------
  */
+#include "commands/inferredby.h"
+#include "nodes/parsenodes.h"
 #include "postgres.h"
 
 #include "access/reloptions.h"
@@ -32,6 +34,7 @@
 #include "commands/conversioncmds.h"
 #include "commands/copy.h"
 #include "commands/createas.h"
+#include "commands/createmodel.h"
 #include "commands/dbcommands.h"
 #include "commands/defrem.h"
 #include "commands/discard.h"
@@ -193,6 +196,7 @@ ClassifyUtilityCommandAsReadOnly(Node *parsetree)
 		case T_CreateUserMappingStmt:
 		case T_CreatedbStmt:
 		case T_CreateModelStmt:
+		case T_InferredByStmt:
 		case T_DefineStmt:
 		case T_DropOwnedStmt:
 		case T_DropRoleStmt:
@@ -1069,7 +1073,16 @@ standard_ProcessUtility(PlannedStmt *pstmt,
 		case T_CreateModelStmt:
 			{
 				CreateModelStmt *stmt = (CreateModelStmt *) parsetree;
+
 				ExecCreateModel(pstate, stmt, params, queryEnv, qc);
+				break;
+			}
+
+		case T_InferredByStmt:
+			{
+				InferredByStmt *stmt = (InferredByStmt *) parsetree;
+
+				ExecInferredBy(pstate, stmt, params, queryEnv, qc, dest);
 				break;
 			}
 
@@ -2897,9 +2910,13 @@ CreateCommandTag(Node *parsetree)
 					tag = CMDTAG_UNKNOWN;
 			}
 			break;
-		
+
 		case T_CreateModelStmt:
 			tag = CMDTAG_CREATE_MODEL;
+			break;
+
+		case T_InferredByStmt:
+			tag = CMDTAG_INFERRED_BY;
 			break;
 
 		case T_RefreshMatViewStmt:

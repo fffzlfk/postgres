@@ -22,4 +22,3 @@ FreePTensor(PTensor pt);
 #endif
 
 #endif
-

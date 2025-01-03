@@ -86,6 +86,7 @@ static Query *transformCallStmt(ParseState *pstate,
 static void transformLockingClause(ParseState *pstate, Query *qry,
 								   LockingClause *lc, bool pushedDown);
 static Query *transformCreateModelStmt(ParseState *pstate, CreateModelStmt * stmt);
+static Query *transformInferredByStmt(ParseState *pstate, InferredByStmt * stmt);
 #ifdef DEBUG_NODE_TESTS_ENABLED
 static bool test_raw_expression_coverage(Node *node, void *context);
 #endif
@@ -496,6 +497,10 @@ transformStmt(ParseState *pstate, Node *parseTree)
 
 		case T_CreateModelStmt:
 			result = transformCreateModelStmt(pstate, (CreateModelStmt *) parseTree);
+			break;
+
+		case T_InferredByStmt:
+			result = transformInferredByStmt(pstate, (InferredByStmt *) parseTree);
 			break;
 
 		default:
@@ -3180,6 +3185,22 @@ transformCreateTableAsStmt(ParseState *pstate, CreateTableAsStmt *stmt)
 
 static Query *
 transformCreateModelStmt(ParseState *pstate, CreateModelStmt * stmt)
+{
+	Query	   *result;
+	Query	   *query;
+
+	query = transformStmt(pstate, stmt->selectquery);
+	stmt->selectquery = (Node *) query;
+
+	result = makeNode(Query);
+	result->commandType = CMD_UTILITY;
+	result->utilityStmt = (Node *) stmt;
+
+	return result;
+}
+
+static Query *
+transformInferredByStmt(ParseState *pstate, InferredByStmt * stmt)
 {
 	Query	   *result;
 	Query	   *query;

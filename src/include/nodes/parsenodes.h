@@ -2192,6 +2192,13 @@ typedef struct CreateModelOption
 	int			option_value;
 }			CreateModelOption;
 
+typedef struct InferredByStmt
+{
+	NodeTag		type;
+	char	   *modelname;
+	Node	   *selectquery;
+}			InferredByStmt;
+
 /* ----------------------
  *		Set Operation node for post-analysis query trees
  *

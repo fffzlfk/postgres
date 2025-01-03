@@ -8,19 +8,20 @@
 CATALOG(pg_model, 9999, ModelRelationId)
 {
 	/* Language name */
-	NameData modelname;
+	NameData	modelname;
 
-#ifdef CATALOG_VARLEN /* variable-length fields start here */
+	text		modeltype;
 
-	text modeltype;
+	bytea		modelbin BKI_DEFAULT(_null_);
 
-	bytea modelbin BKI_DEFAULT(_null_);
 	/* Access privileges */
-#endif
 }
+
 FormData_pg_model;
 
-typedef FormData_pg_model *Form_pg_model;
+typedef FormData_pg_model * Form_pg_model;
+
+DECLARE_UNIQUE_INDEX_PKEY(pg_modelname_index, 9998, ModelNameIndexId, pg_model, btree(modelname name_ops));
 
 extern void SaveModelToCatalog(const char *modelname, const char *modeltype, bytea *modelbin);
 

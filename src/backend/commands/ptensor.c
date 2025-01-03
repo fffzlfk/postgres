@@ -5,11 +5,11 @@ PTensor
 AllocPTensor(int *dims, int len)
 {
 	PTensor		pt;
+	int			size = 0;
 
 	pt.dims = palloc0(len * sizeof(int));
 	pt.dim_len = len;
 
-	int			size = 0;
 
 	for (int i = 0; i < len; i++)
 	{
